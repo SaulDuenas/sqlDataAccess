@@ -46,7 +46,7 @@ public class MappingTypes {
 
 	
 	static public MappingTypes getMappingType(Integer Type) {
-		
+
 		for (MappingTypes mt: _MappingTypes) {
 			
 			if (mt.Type().equals(Type) ) {
@@ -58,9 +58,19 @@ public class MappingTypes {
 	}
 	
 	
-	protected String _SqlType="";
+	static public MappingTypes getMappingType(String SQLType) {
+
+		for (MappingTypes mt: _MappingTypes) {
+			
+			if(mt.SQLType().equals(SQLType)) {
+				return mt;
+			}
+		}
+		return null;
+	}
 
 	
+	protected String _SqlType="";
 	
 	public String SQLType() {
 		return _SqlType;

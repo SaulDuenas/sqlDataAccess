@@ -72,15 +72,15 @@ public class SqlHelper {
 				else if (obj instanceof Float){
 					PreparedStatement.setFloat(++pos, Float.parseFloat(value));
 				}
-				else if (obj instanceof Double) {
+				else if (obj instanceof Double){
 					PreparedStatement.setDouble(++pos, Double.parseDouble(value));
 				}
 				
-				else if (obj instanceof Long ) {
+				else if (obj instanceof Long ){
 					PreparedStatement.setLong(++pos, Long.parseLong(value));
 				}
 				
-				else if (obj instanceof Date) {
+				else if (obj instanceof Date){
 					PreparedStatement.setDate(++pos,new java.sql.Date(((Date) obj).getTime()));
 				}
 		
@@ -90,7 +90,7 @@ public class SqlHelper {
 	}
 	
 	
-	private static PreparedStatement PreparedCommand(Connection Conn,String sqlCommand,CommandType commandType,Object[] Parameters) throws SQLException{
+	private static PreparedStatement PreparedCommand(Connection Conn,String sqlCommand ,Object[] Parameters) throws SQLException{
 		
 		//Connection Conn = null;
 		PreparedStatement PreparedStatement = null;
@@ -103,6 +103,8 @@ public class SqlHelper {
 													  ResultSet.CONCUR_READ_ONLY,
 													  Statement.RETURN_GENERATED_KEYS);
 			
+		//	NamedParameterStatement p = new  NamedParameterStatement(Conn,sqlCommand);
+		
 		}
 		
 		if (Parameters != null) {
@@ -112,6 +114,17 @@ public class SqlHelper {
 		return PreparedStatement;
 		
 	}
+	
+	private static Statement StatementCommand(Connection Conn)  throws SQLException{
+		Statement stmt = null;
+		
+		if (!Conn.isClosed()) {
+			stmt = Conn.createStatement ();
+		}
+		
+		return  stmt;
+	}
+	
 	
 	
 	/**
@@ -124,16 +137,20 @@ public class SqlHelper {
 	*/
 	public static DataTable ExecuteDataTable(DataAccess da,String sqlCommand,Object[] Parameters) throws SQLException {
 		DataTable dt=new DataTable();
+		Connection Conn=null;
+		PreparedStatement PreparedStatement = null;
+		ResultSet rs = null;
+		
 		try {
-				Connection Conn=da.DataSource().getConnection();
-				PreparedStatement PreparedStatement = PreparedCommand(Conn,sqlCommand,CommandType.SQLCommand,Parameters);
-				ResultSet rs = PreparedStatement.executeQuery();
+				Conn=da.GetConnection();
+		
+				// is query with parameters ?
+				rs = Parameters != null ? PreparedCommand(Conn,sqlCommand,Parameters).executeQuery() : StatementCommand(Conn).executeQuery(sqlCommand);
 				
-				int nColumn = rs.getMetaData().getColumnCount();
 				// Obtain Metadata Query
+				int nColumn = rs.getMetaData().getColumnCount();
 				for (int x=1;x<=nColumn;x++) {
-					
-					dt.get_Colums().add( new DataColumn(rs.getMetaData().getColumnName(x), rs.getMetaData().getColumnType(x)));
+					dt.DataColumList().add( new DataColumn(rs.getMetaData().getColumnName(x), rs.getMetaData().getColumnType(x),rs.getMetaData().getColumnTypeName(x)));
 				}
 				
 				// obtain data
@@ -141,14 +158,15 @@ public class SqlHelper {
 				    DataRow rw = new DataRow(); 
 					// ... get column values from this record
 					for (int x=1;x<=nColumn;x++) {
+						
 						Object obj = rs.getObject(x);
-						rw.get_Values().add(obj);
+						rw.getlist().add(obj);
 					}
-					dt.get_DataRows().add(rw);
+					dt.DataRowList().add(rw);
 				}
 				
-				Conn.close();
-		
+				//return dt;
+				
 		} catch (SQLException e) {
 			throw new SQLException("An error occurred while performing the requested operation." + 
 									"\r DataAcess: " + da.get_name() +				
@@ -156,6 +174,14 @@ public class SqlHelper {
 									"\r Message: " + e.getMessage() +
 								    "\r SqlState: " + e.getSQLState() +
 								    "\r ErrorCode: " + e.getErrorCode()); 
+		}
+		finally {
+			if (PreparedStatement  != null) { PreparedStatement.close(); }
+			PreparedStatement =null;
+			if (Conn != null) {Conn.close(); }
+			if (rs != null) {rs.close();}
+			Conn = null;
+			
 		}
 		
 		return dt;
@@ -175,8 +201,9 @@ public class SqlHelper {
 	public static ResultSet ExecuteReader(Connection Conn,String sqlCommand,CommandType CommandType,Object[] Parameters) throws SQLException {
 		//Connection Conn=basicDataConn.getConnection();
 		
-		PreparedStatement lPreparedStatement = PreparedCommand(Conn,sqlCommand,CommandType,Parameters);
-		ResultSet rs = lPreparedStatement.executeQuery();
+		//PreparedStatement pstmt  = PreparedCommand(Conn,sqlCommand,Parameters);
+		ResultSet rs = Parameters != null ? PreparedCommand(Conn,sqlCommand,Parameters).executeQuery():StatementCommand(Conn).executeQuery(sqlCommand);
+		
 		return rs;
 	}
 
@@ -196,8 +223,11 @@ public class SqlHelper {
 		try {
 				Connection Conn=da.DataSource().getConnection();
 				
-				PreparedStatement PreparedStatement = PreparedCommand(Conn,sqlCommand,CommandType,Parameters);
-				ResultSet rs = PreparedStatement.executeQuery();
+				PreparedStatement PreparedStatement = PreparedCommand(Conn,sqlCommand,Parameters);
+				//ResultSet rs = PreparedStatement.executeQuery();
+				
+				ResultSet rs = Parameters != null ? PreparedCommand(Conn,sqlCommand,Parameters).executeQuery():StatementCommand(Conn).executeQuery(sqlCommand);
+				
 				if (rs != null && rs.next()){
 					_obj = rs.getObject(1);
 				}
@@ -205,6 +235,7 @@ public class SqlHelper {
 				PreparedStatement.close();
 				if(Conn != null && !Conn.isClosed()) {
 					Conn.close();
+					rs.close();
 				}
 				
 		} catch (SQLException e) {
@@ -242,10 +273,11 @@ public class SqlHelper {
 		try {
 				Connection Conn=da.DataSource().getConnection();
 				
-				PreparedStatement PreparedStatement = PreparedCommand(Conn,sqlCommand,CommandType,Parameters);
+				PreparedStatement PreparedStatement = PreparedCommand(Conn,sqlCommand,Parameters);
 				rowsAffected = (long) PreparedStatement.executeUpdate();
 				
 				ResultSet rs = PreparedStatement.getGeneratedKeys();
+				
 				if (rs != null && rs.next()) {
 					// Autoincrement
 					autoGenerated = rs.getLong(1);
@@ -275,7 +307,8 @@ public class SqlHelper {
 	*/
 	public static void TransExecuteNonQuery(DataAccess da,Collection<String> sqlCommand)throws Exception{
 		
-		PreparedStatement lPreparedStatement = null;
+		//PreparedStatement pstmt  = null;
+		Statement stmt = null;
 		Connection Conn=da.DataSource().getConnection();
 		
 		long batch_counter=0;
@@ -289,18 +322,23 @@ public class SqlHelper {
 			Conn.setAutoCommit(false);
 			for (String sql : sqlCommand){
 				batch_counter ++;
-				lPreparedStatement = Conn.prepareStatement(sql);
-				//lPreparedStatement.executeUpdate();
-				lPreparedStatement.addBatch();
+				
+				stmt = Conn.createStatement();
+				stmt.addBatch(sql);
+				
+				//pstmt = Conn.prepareStatement(sql);
+				//pstmt .executeUpdate();
+				//pstmt.addBatch();
 				
 				if (batch_counter % BATCH_SIZE == BATCH_SIZE - 1) {
-					lPreparedStatement.executeBatch();
+					stmt.executeBatch();
+					//pstmt .executeBatch();
 					Conn.commit();
 				}
 				
 			}
 			if (sqlCommand.size() % BATCH_SIZE != 0) {
-				lPreparedStatement.executeBatch();
+				stmt.executeBatch();
 				Conn.commit();
 			}
 			
@@ -326,8 +364,8 @@ public class SqlHelper {
 				    "\r ErrorCode: " + ex.getErrorCode());
 				
 		} finally {
-			if (lPreparedStatement != null) { lPreparedStatement.close(); }
-			lPreparedStatement=null;
+			if (stmt  != null) { stmt.close(); }
+			stmt =null;
 			if (Conn != null) {Conn.close(); }
 			da.DataSource().setDefaultAutoCommit(true);
 		}
@@ -337,7 +375,7 @@ public class SqlHelper {
 	public static void TransExecuteNonQuery(DataAccess da,sqlCommand cmdList)throws Exception{
 		
 		String qry = ""; 
-		PreparedStatement lPreparedStatement = null;
+		PreparedStatement pstmt  = null;
 		Connection Conn = null;
 		Long batch_counter=(long) 0;
 			
@@ -352,22 +390,22 @@ public class SqlHelper {
 			for (sqlCommand cmd : sqlCmdList){
 				batch_counter ++;
 				qry = cmd.Command();
-				lPreparedStatement = Conn.prepareStatement(qry);
+				pstmt  = Conn.prepareStatement(qry);
 				// ADD PARAMETERS
-				AttachParameters(lPreparedStatement,Conn,cmd.Parameters().Values());
+				AttachParameters(pstmt ,Conn,cmd.Parameters().Values());
 				
-				lPreparedStatement.addBatch();
+				pstmt .addBatch();
 				
 				if (batch_counter % BATCH_SIZE == BATCH_SIZE - 1) {
-					lPreparedStatement.executeBatch();
+					pstmt .executeBatch();
 					//Conn.commit();
 				}
 				
 			}
 			if (sqlCmdList.size() % BATCH_SIZE != 0) {
-				lPreparedStatement.executeBatch();
+				pstmt .executeBatch();
 			}
-			lPreparedStatement.close();
+			pstmt .close();
 			
 			Conn.commit();
 			da.DataSource().setDefaultAutoCommit(true);
@@ -395,8 +433,8 @@ public class SqlHelper {
 								    "\r ErrorCode: " + ex.getErrorCode());
 				
 		} finally {
-			if (lPreparedStatement != null) { lPreparedStatement.close(); }
-			lPreparedStatement=null;
+			if (pstmt  != null) { pstmt .close(); }
+			pstmt =null;
 			if (Conn != null) {Conn.close(); }
 			da.DataSource().setDefaultAutoCommit(true);
 		}

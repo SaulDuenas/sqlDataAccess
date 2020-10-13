@@ -63,7 +63,7 @@ public class DataAccess {
 	private ArrayList<DataAccess> _dataconn = new ArrayList<DataAccess>(); 
 	
 	
-	public ArrayList<DataAccess> get_dataconn() {
+	public ArrayList<DataAccess> List() {
 		return _dataconn;
 	}
 
@@ -87,6 +87,41 @@ public class DataAccess {
 		
 	}
 	
+	/**
+	 *  DataAccess – Constructor 
+	 *  
+	 *  @name DataAccess 
+	 *  @param name 
+	 *  @param DriverClassName 
+	 *  @param url -> jdbc:oracle:thin:@HOSTNAME:PORTNUMBER:ServiceName
+	 *  			  jdbc:sqlserver://HOSTNAME:PORTNUMBER;databaseName=DATABASE_NAME;instance=INSTANCE_NAME;
+	 *  			  jdbc:mysql://host:PORTNUMBER/DATABASE_NAME;instance=INSTANCE_NAME;
+	 *  @param user
+	 *  @param password
+	 *  @return None
+	 * 
+	*/
+	public DataAccess(String name,String driverClassName, String url, String user, String password,String Validation_Query){
+		this._name = name;
+		this._driverClassName = driverClassName;
+		this._url = url;
+		this._user = user;
+		this._password = password;
+		
+		this._ds = null;
+		this._ds = new BasicDataSource();
+		
+		this._ds.setDriverClassName(driverClassName);
+		this._ds.setUrl(url);
+		this._ds.setUsername(user);
+		this._ds.setPassword(password);
+		//this._ds.setMaxIdle(20);
+		//this._ds.setInitialSize(33);
+		this._ds.setValidationQuery(Validation_Query);
+		this._ds.setPoolPreparedStatements(this._PreparedStatements);
+	}
+	
+	
 	public DataAccess getDataAccess (String name) throws SQLException {
 		//private StkDataConn _conn;
 		if (this._dataconn != null) {
@@ -100,64 +135,6 @@ public class DataAccess {
 		}
 		// no encontro la conexión regresa nulo
 		return null;
-	}
-	
-	
-	/**
-	 *  ExecuteDataTable – Fetching data return with DataTable. 
-	 *  
-	 *  @name setConnection 
-	 *  @param name 
-	 *  @param DriverClassName 
-	 *  @param url -> jdbc:oracle:thin:@HOSTNAME:PORTNUMBER:ServiceName
-	 *  			  jdbc:sqlserver://HOSTNAME:PORTNUMBER;databaseName=DATABASE_NAME;instance=INSTANCE_NAME;
-	 *  			  jdbc:mysql://host:PORTNUMBER/DATABASE_NAME;instance=INSTANCE_NAME;
-	 *  @param user
-	 *  @param password
-	 *  @return None
-	 * @throws SQLException 
-	*/
-	public void setConnection(String name,String driverClassName, String url, String user, String password,String Validation_Query) {
-		
-		this._name = name;
-		this._driverClassName = driverClassName;
-		this._url = url;
-		this._user = user;
-		this._password = password;
-	
-		this._ds = null;
-		this._ds = new BasicDataSource();
-		
-		this._ds.setDriverClassName(driverClassName);
-		this._ds.setUrl(url);
-		this._ds.setUsername(user);
-		this._ds.setPassword(password);
-		//this._ds.setMaxIdle(20);
-		//this._ds.setInitialSize(33);
-		this._ds.setValidationQuery(Validation_Query);
-		this._ds.setPoolPreparedStatements(this._PreparedStatements);
-		
-		DataAccess dataConn =  new DataAccess();
-		
-		dataConn.set_name(name);
-		dataConn.set_BasicDataSource(this._ds);
-		dataConn.set_driverClassName(driverClassName);
-		dataConn.set_url(url);
-		dataConn.set_user(user);
-		dataConn.set_password(password);
-		
-		this._dataconn.add(dataConn);
-		
-	//	try {
-	//		this._ds.getConnection();
-	//		this._ds.close();
-		
-	//} catch (SQLException err) {
-		
-//		err.printStackTrace();
-//	}	
-		
-		
 	}
 	
 	
